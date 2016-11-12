@@ -1,6 +1,6 @@
 require "spec_helper"
 
-describe "RoundRobin" do
+describe "TimedRoundRobin" do
 
   before(:each) do
     Resque.redis.flushall
@@ -26,7 +26,7 @@ describe "RoundRobin" do
   end
 
   it "should pass lint" do
-    Resque::Plugin.lint(Resque::Plugins::RoundRobin)
+    Resque::Plugin.lint(Resque::Plugins::TimedRoundRobin)
   end
-  
+
 end

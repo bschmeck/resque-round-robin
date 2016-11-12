@@ -1,6 +1,6 @@
 
 module Resque::Plugins
-  module RoundRobin
+  module TimedRoundRobin
     def filter_busy_queues qs
       busy_queues = Resque::Worker.working.map { |worker| worker.job["queue"] }.compact
       Array(qs.dup).compact - busy_queues
@@ -64,6 +64,5 @@ module Resque::Plugins
       end
     end
 
-  end # RoundRobin
+  end # TimedRoundRobin
 end # Resque::Plugins
-

@@ -1,6 +1,6 @@
 module Resque
   module Plugins
-    module RoundRobin
+    module TimedRoundRobin
       VERSION = "0.1.4"
     end
   end

@@ -1,5 +1,5 @@
 require 'rspec'
-require 'resque-round-robin'
+require 'resque-timed-round-robin'
 
 spec_dir = File.dirname(File.expand_path(__FILE__))
 REDIS_CMD = "redis-server #{spec_dir}/redis-test.conf"
@@ -18,4 +18,3 @@ class SomeJob
   def self.perform(*args)
   end
 end
-
