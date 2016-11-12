@@ -1,3 +1,4 @@
+require 'pathname'
 require 'rspec'
 require 'resque-timed-round-robin'
 
@@ -10,8 +11,13 @@ Resque.redis = 'localhost:9736'
 
 # Schedule the redis server for shutdown when tests are all finished.
 at_exit do
-  pid = File.read("#{spec_dir}/redis.pid").to_i rescue nil
-  system ("kill #{pid}") if pid != 0
+  pid_file = Pathname.new("#{spec_dir}/redis.pid")
+  if pid_file.exist?
+    pid = pid_file.read.to_i
+    system ("kill #{pid}") if pid != 0
+  else
+    puts "Unable to find pid file.  Cannot shutdown Redis"
+  end
 end
 
 class SomeJob
