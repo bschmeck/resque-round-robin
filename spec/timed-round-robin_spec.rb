@@ -14,12 +14,12 @@ describe "TimedRoundRobin" do
       worker = Resque::Worker.new(:q1, :q2)
 
       worker.process
-      Resque.size(:q1).should == 5
-      Resque.size(:q2).should == 4
+      expect(Resque.size(:q1)).to eq 5
+      expect(Resque.size(:q2)).to eq 4
 
       worker.process
-      Resque.size(:q1).should == 4
-      Resque.size(:q2).should == 4
+      expect(Resque.size(:q1)).to eq 4
+      expect(Resque.size(:q2)).to eq 4
     end
 
     it 'skips a queue that is being processed by another worker'
