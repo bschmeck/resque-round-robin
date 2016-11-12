@@ -7,15 +7,36 @@ module Resque::Plugins
     end
 
     def rotated_queues
+      # Grab the current list of queues.  Don't cache it beyond this method call
+      # because queues can be added/removed dynamically
+      @queues = queues
+      return [] if @queues.empty?
+
       @n ||= 0
-      @n += 1
-      rot_queues = queues # since we rely on the resque-dynamic-queues plugin, this is all the queues, expanded out
-      if rot_queues.size > 0
-        @n = @n % rot_queues.size
-        rot_queues.rotate(@n)
-      else
-        rot_queues
+      if slice_expired?
+        advance_offset
+        begin_new_slice
       end
+
+      @queues.rotate(@n)
+    end
+
+    def advance_offset
+      @n = (@n + 1) % @queues.size
+    end
+
+    DEFAULT_SLICE_LENGTH = 60
+    def slice_length
+      @slice_length ||= ENV.fetch("RESQUE_SLICE_LENGTH", DEFAULT_SLICE_LENGTH).to_i
+    end
+
+    def slice_expired?
+      @slice_expiration ||= Time.now
+      Time.now > @slice_expiration
+    end
+
+    def begin_new_slice
+      @slice_expiration = Time.now + slice_length
     end
 
     def queue_depth queuename
