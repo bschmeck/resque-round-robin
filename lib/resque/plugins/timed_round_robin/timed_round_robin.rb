@@ -1,7 +1,7 @@
 
 module Resque::Plugins
   module TimedRoundRobin
-    def filter_busy_queues qs
+    def filter_busy_queues(qs)
       busy_queues = Resque::Worker.working.map { |worker| worker.job["queue"] }.compact
       Array(qs.dup).compact - busy_queues
     end
@@ -13,10 +13,7 @@ module Resque::Plugins
       return [] if @queues.empty?
 
       @n ||= 0
-      if slice_expired?
-        advance_offset
-        begin_new_slice
-      end
+      advance_offset if slice_expired?
 
       @queues.rotate(@n)
     end
@@ -35,18 +32,18 @@ module Resque::Plugins
       Time.now > @slice_expiration
     end
 
-    def begin_new_slice
-      @slice_expiration = Time.now + slice_length
+    def begin_new_queue(queue)
+
     end
 
-    def queue_depth queuename
+    def queue_depth(queuename)
       busy_queues = Resque::Worker.working.map { |worker| worker.job["queue"] }.compact
       # find the queuename, count it.
       busy_queues.select {|q| q == queuename }.size
     end
 
     DEFAULT_QUEUE_DEPTH = 0
-    def should_work_on_queue? queuename
+    def should_work_on_queue?(queuename)
       return true if @queues.include? '*'  # workers with QUEUES=* are special and are not subject to queue depth setting
       max = DEFAULT_QUEUE_DEPTH
       unless ENV["RESQUE_QUEUE_DEPTH"].nil? || ENV["RESQUE_QUEUE_DEPTH"] == ""
@@ -63,10 +60,10 @@ module Resque::Plugins
       qs = rotated_queues
       qs.each do |queue|
         log! "Checking #{queue}"
-        if should_work_on_queue?(queue) && job = Resque::Job.reserve(queue)
-          log! "Found job on #{queue}"
-          return job
-        end
+        next unless should_work_on_queue? queue
+        job = reserve_job_from(queue)
+        return job if job
+
         # Start the next search at the queue after the one from which we pick a job.
         @n += 1
       end
@@ -76,6 +73,24 @@ module Resque::Plugins
       log "Error reserving job: #{e.inspect}"
       log e.backtrace.join("\n")
       raise e
+    end
+
+    def reserve_job_from(queue)
+      job = Resque::Job.reserve(queue)
+      if job
+        log! "Found job on #{queue}"
+
+        if new_queue? queue
+          @slice_expiration = Time.now + slice_length
+          @queue = queue
+        end
+      end
+
+      job
+    end
+
+    def new_queue?(queue)
+      @queue != queue
     end
 
     def self.included(receiver)
