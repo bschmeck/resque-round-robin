@@ -1,4 +1,3 @@
-
 module Resque::Plugins
   module TimedRoundRobin
     def filter_busy_queues(qs)

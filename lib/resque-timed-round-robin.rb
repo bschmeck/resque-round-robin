@@ -1,4 +1,3 @@
-
 require 'resque'
 require 'resque/worker'
 require "resque/plugins/timed_round_robin/version"
