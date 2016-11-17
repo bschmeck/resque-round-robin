@@ -25,7 +25,7 @@ And then execute:
 
 Nothing special.  This gem monkey-patches things so this is automatic.
 
-Set the `DEFAULT_SLICE_LENGTH` environment variable to specify the amount of time (in seconds) to work a single queue before rotating.
+Set the `RESQUE_SLICE_LENGTH` environment variable to specify the amount of time (in seconds) to work a single queue before rotating.
 
 ## Contributing
 
