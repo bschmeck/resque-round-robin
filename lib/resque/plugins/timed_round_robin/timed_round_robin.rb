@@ -8,17 +8,17 @@ module Resque::Plugins
     def rotated_queues
       # Grab the current list of queues.  Don't cache it beyond this method call
       # because queues can be added/removed dynamically
-      @queues = queues
-      return [] if @queues.empty?
+      @rtrr_queues = queues
+      return [] if @rtrr_queues.empty?
 
       @n ||= 0
       advance_offset if slice_expired?
 
-      @queues.rotate(@n)
+      @rtrr_queues.rotate(@n)
     end
 
     def advance_offset
-      @n = (@n + 1) % @queues.size
+      @n = (@n + 1) % @rtrr_queues.size
     end
 
     DEFAULT_SLICE_LENGTH = 60
