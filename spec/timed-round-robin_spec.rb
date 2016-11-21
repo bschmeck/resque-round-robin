@@ -42,6 +42,23 @@ describe "TimedRoundRobin" do
       expect(Resque.size(:q1)).to eq 4
       expect(Resque.size(:q2)).to eq 0
     end
+
+    it "rotates to newly created queues" do
+      5.times { Resque::Job.create("queue-1", SomeJob) }
+
+      worker = Resque::Worker.new("queue*")
+
+      worker.process
+      expect(Resque.size("queue-1")).to eq 4
+
+      5.times { Resque::Job.create("queue-2", SomeJob) }
+
+      Timecop.travel(Time.now + 60) do
+        worker.process
+        expect(Resque.size("queue-1")).to eq 4
+        expect(Resque.size("queue-2")).to eq 4
+      end
+    end
   end
 
   it "should pass lint" do
