@@ -61,7 +61,15 @@ describe "TimedRoundRobin" do
       end
 
       it 'returns the customized depth' do
-        expect(worker.queue_depth_for(:q1)).to eq(custom_depth)
+        expect(worker.queue_depth_for(:q1_)).to eq(custom_depth)
+      end
+
+      it 'returns the customized depth for a partial queue name match' do
+        Resque::Plugins::TimedRoundRobin.configure do |c|
+          c.queue_depths = { :q1 => custom_depth }
+        end
+
+        expect(worker.queue_depth_for(:q1_foobar)).to eq(custom_depth)
       end
 
       it 'returns the default depth for non-customized queues' do

@@ -58,7 +58,11 @@ module Resque::Plugins
     def queue_depth_for(queuename)
       queue_depths = Resque::Plugins::TimedRoundRobin.configuration.queue_depths
 
-      queue_depths.fetch(queuename, DEFAULT_QUEUE_DEPTH)
+      key = queue_depths.keys.detect do |queue_key|
+        partial_qn = "#{queue_key.to_s}_"
+        queuename.to_s.start_with?(partial_qn)
+      end
+      queue_depths.fetch(key, DEFAULT_QUEUE_DEPTH)
     end
 
     def reserve_with_round_robin
