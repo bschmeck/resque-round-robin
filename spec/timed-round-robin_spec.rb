@@ -44,8 +44,33 @@ describe "TimedRoundRobin" do
     end
   end
 
+  describe '#queue_depth_for' do
+    let(:worker) { Resque::Worker.new(:q1, :q2) }
+
+    it 'defaults to DEFAULT_QUEUE_DEPTH for non-customized queues' do
+      expect(worker.queue_depth_for(:q1)).to eq(Resque::Plugins::TimedRoundRobin::DEFAULT_QUEUE_DEPTH)
+    end
+
+    context "when depths have been configured" do
+      let(:custom_depth) { 12 }
+
+      before do
+        Resque::Plugins::TimedRoundRobin.configure do |c|
+          c.queue_depths = { :q1 => custom_depth }
+        end
+      end
+
+      it 'returns the customized depth' do
+        expect(worker.queue_depth_for(:q1)).to eq(custom_depth)
+      end
+
+      it 'returns the default depth for non-customized queues' do
+        expect(worker.queue_depth_for(:q2)).to eq(Resque::Plugins::TimedRoundRobin::DEFAULT_QUEUE_DEPTH)
+      end
+    end
+  end
+
   it "should pass lint" do
     Resque::Plugin.lint(Resque::Plugins::TimedRoundRobin)
   end
-
 end
