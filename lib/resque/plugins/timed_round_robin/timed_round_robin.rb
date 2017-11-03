@@ -58,8 +58,8 @@ module Resque::Plugins
     def queue_depth_for(queuename)
       queue_depths = Resque::Plugins::TimedRoundRobin.configuration.queue_depths
 
-      key = queue_depths.keys.detect do |queue_key|
-        partial_qn = "#{queue_key.to_s}_"
+      key = queue_depths.keys.detect do |queue_prefix|
+        partial_qn = "#{queue_prefix.to_s}_"
         queuename.to_s.start_with?(partial_qn)
       end
       queue_depths.fetch(key, DEFAULT_QUEUE_DEPTH)
