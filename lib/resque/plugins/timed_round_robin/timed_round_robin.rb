@@ -1,5 +1,3 @@
-require 'resque/plugins/timed_round_robin/configuration'
-
 module Resque::Plugins
   module TimedRoundRobin
     def filter_busy_queues(qs)
