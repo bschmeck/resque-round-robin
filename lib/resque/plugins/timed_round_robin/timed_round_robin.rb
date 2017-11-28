@@ -37,8 +37,12 @@ module Resque::Plugins
 
     def queue_depth(queuename)
       busy_queues = Resque::Worker.working.map { |worker| worker.job["queue"] }.compact
-      # find the queuename, count it.
-      busy_queues.select {|q| q.to_s == queuename.to_s }.size
+      key = queue_prefix_key(queuename).to_s
+
+      # find the queue prefix and count it.
+      busy_queues.each(&:to_s).select do |busy_queue_name|
+        busy_queue_name == queuename.to_s || (key && busy_queue_name.start_with?(key))
+      end.size
     end
 
     def should_work_on_queue?(queuename)
@@ -57,13 +61,19 @@ module Resque::Plugins
     DEFAULT_QUEUE_DEPTH = 0
 
     def queue_depth_for(queuename)
-      queue_depths = Resque::Plugins::TimedRoundRobin.configuration.queue_depths
+      key = queue_prefix_key(queuename)
+      queue_depths.fetch(key, DEFAULT_QUEUE_DEPTH)
+    end
 
-      key = queue_depths.keys.detect do |queue_prefix|
+    def queue_prefix_key(queuename)
+      queue_depths.keys.detect do |queue_prefix|
         partial_qn = "#{queue_prefix.to_s}_"
         queuename.to_s.start_with?(partial_qn)
       end
-      queue_depths.fetch(key, DEFAULT_QUEUE_DEPTH)
+    end
+
+    def queue_depths
+      @queue_depths ||= Resque::Plugins::TimedRoundRobin.configuration.queue_depths
     end
 
     def reserve_with_round_robin

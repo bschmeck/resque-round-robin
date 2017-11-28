@@ -60,7 +60,7 @@ describe "TimedRoundRobin" do
       expect(worker2.queue_depth(:q3)).to eq(0)
     end
 
-    it 'returns > 0 queue depth when jobs are running' do
+    it 'returns > 0 queue depth when jobs are running on a queue' do
       j1 = Resque::Job.new(:q2, SomeJob)
       j2 = Resque::Job.new(:q2, SomeJob)
 
@@ -72,6 +72,24 @@ describe "TimedRoundRobin" do
       expect(Resque::Worker.exists?(worker)).to eq(true)
       expect(worker.queue_depth(:q2)).to eq(2)
       expect(worker2.queue_depth(:q2)).to eq(2)
+    end
+
+    it 'returns > 0 queue depth when jobs are running on queue with prefix' do
+      Resque::Plugins::TimedRoundRobin.configure do |c|
+        c.queue_depths = { :q2 => 5 }
+      end
+
+      j1 = Resque::Job.new(:q2_foo, SomeJob)
+      j2 = Resque::Job.new(:q2_bar, SomeJob)
+
+      worker.register_worker
+      worker.working_on(j1)
+      worker2.register_worker
+      worker2.working_on(j2)
+
+      expect(Resque::Worker.exists?(worker)).to eq(true)
+      expect(worker.queue_depth(:q2_foo)).to eq(2)
+      expect(worker2.queue_depth(:q2_bar)).to eq(2)
     end
   end
 
