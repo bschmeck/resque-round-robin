@@ -12,8 +12,8 @@ module Resque::Plugins
 
       @n ||= 0
       if slice_expired?
-        advance_offset
         @rtrr_queues = queues
+        advance_offset
       end
 
       @rtrr_queues.rotate(@n)
