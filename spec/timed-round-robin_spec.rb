@@ -44,7 +44,7 @@ describe "TimedRoundRobin" do
     end
 
     it "only refreshes queue list when slice expires" do
-      5.times { Resque::Job.create(:q1, SomeJob) }
+      10.times { Resque::Job.create(:q1, SomeJob) }
       5.times { Resque::Job.create(:q2, SomeJob) }
       expect_any_instance_of(Resque::Worker).to receive(:queues).exactly(3).times { ["q1", "q2"] }
       worker = Resque::Worker.new(:q1, :q2)
@@ -66,6 +66,21 @@ describe "TimedRoundRobin" do
       worker.process
 
       expect(Resque.size(:q1)).to eq 4
+    end
+
+    it "will refresh queue list after queue is drained" do
+      worker = Resque::Worker.new('*')
+      worker.process
+      2.times { Resque::Job.create(:q2, SomeJob) }
+      worker.process
+      5.times { Resque::Job.create(:q1, SomeJob) }
+      worker.process
+      expect(Resque.size(:q2)).to eq 0
+
+      worker.process
+      worker.process
+      expect(Resque.size(:q1)).to eq 4
+      expect(Resque.size(:q2)).to eq 0
     end
   end
 
