@@ -8,7 +8,10 @@ module Resque::Plugins
     def rotated_queues
       # only refresh queues when a slice expires
       @rtrr_queues ||= queues
-      return [] if @rtrr_queues.empty?
+      if @rtrr_queues.empty?
+        @rtrr_queues = nil
+        return []
+      end
 
       @n ||= 0
       if slice_expired?
