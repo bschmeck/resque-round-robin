@@ -58,6 +58,15 @@ describe "TimedRoundRobin" do
         worker.process
       end
     end
+
+    it "will check for new queues until it has some" do
+      worker = Resque::Worker.new('*')
+      worker.process
+      5.times { Resque::Job.create(:q1, SomeJob) }
+      worker.process
+
+      expect(Resque.size(:q1)).to eq 4
+    end
   end
 
   describe '#queue_depth' do
