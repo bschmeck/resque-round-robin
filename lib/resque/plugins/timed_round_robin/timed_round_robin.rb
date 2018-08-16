@@ -89,8 +89,9 @@ module Resque::Plugins
         job = reserve_job_from(queue)
         return job if job
 
-        # Start the next search at the queue after the one from which we pick a job.
+        # Move to the next queue if current one is empty and refresh the queue list
         @n += 1
+        @rtrr_queues = queues
       end
 
       nil
