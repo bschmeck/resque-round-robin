@@ -42,6 +42,22 @@ describe "TimedRoundRobin" do
       expect(Resque.size(:q1)).to eq 4
       expect(Resque.size(:q2)).to eq 0
     end
+
+    it "only refreshes queue list when slice expires" do
+      5.times { Resque::Job.create(:q1, SomeJob) }
+      5.times { Resque::Job.create(:q2, SomeJob) }
+      expect_any_instance_of(Resque::Worker).to receive(:queues).exactly(3).times { ["q1", "q2"] }
+      worker = Resque::Worker.new(:q1, :q2)
+      worker.process
+      worker.process
+      worker.process
+      worker.process
+      worker.process
+
+      Timecop.travel(Time.now + 60) do
+        worker.process
+      end
+    end
   end
 
   describe '#queue_depth' do
