@@ -43,22 +43,6 @@ describe "TimedRoundRobin" do
       expect(Resque.size(:q2)).to eq 0
     end
 
-    it "only refreshes queue list when slice expires" do
-      10.times { Resque::Job.create(:q1, SomeJob) }
-      5.times { Resque::Job.create(:q2, SomeJob) }
-      expect_any_instance_of(Resque::Worker).to receive(:queues).exactly(3).times { ["q1", "q2"] }
-      worker = Resque::Worker.new(:q1, :q2)
-      worker.process
-      worker.process
-      worker.process
-      worker.process
-      worker.process
-
-      Timecop.travel(Time.now + 60) do
-        worker.process
-      end
-    end
-
     it "will check for new queues until it has some" do
       worker = Resque::Worker.new('*')
       worker.process
@@ -68,19 +52,53 @@ describe "TimedRoundRobin" do
       expect(Resque.size(:q1)).to eq 4
     end
 
-    it "will refresh queue list after queue is drained" do
-      worker = Resque::Worker.new('*')
-      worker.process
-      2.times { Resque::Job.create(:q2, SomeJob) }
-      worker.process
-      5.times { Resque::Job.create(:q1, SomeJob) }
-      worker.process
-      expect(Resque.size(:q2)).to eq 0
+    describe "queue refreshing" do
+      it "refreshes the queue list by default every 60 seconds" do
+        10.times { Resque::Job.create(:q1, SomeJob) }
+        5.times { Resque::Job.create(:q2, SomeJob) }
+        expect_any_instance_of(Resque::Worker).to receive(:queues).exactly(2).times { ["q1", "q2"] }
+        worker = Resque::Worker.new(:q1, :q2)
+        worker.process
+        worker.process
+        worker.process
+        worker.process
+        worker.process
 
-      worker.process
-      worker.process
-      expect(Resque.size(:q1)).to eq 4
-      expect(Resque.size(:q2)).to eq 0
+        Timecop.travel(Time.now + 60) do
+          worker.process
+        end
+      end
+
+      context "when queue refresh interval is configured" do
+        let(:custom_interval) { 10 }
+
+        before do
+          Resque::Plugins::TimedRoundRobin.configure do |c|
+            c.queue_refresh_interval = custom_interval
+          end
+        end
+
+        it 'returns the customized queue_refresh_interval' do
+          worker = Resque::Worker.new(:q1, :q2)
+          expect(worker.queue_refresh_interval).to eq(custom_interval)
+        end
+
+        it "refreshes the queue list by configured interval" do
+          10.times { Resque::Job.create(:q1, SomeJob) }
+          5.times { Resque::Job.create(:q2, SomeJob) }
+          expect_any_instance_of(Resque::Worker).to receive(:queues).exactly(2).times { ["q1", "q2"] }
+          worker = Resque::Worker.new(:q1, :q2)
+          worker.process
+          worker.process
+          worker.process
+          worker.process
+          worker.process
+
+          Timecop.travel(Time.now + custom_interval) do
+            worker.process
+          end
+        end
+      end
     end
   end
 
