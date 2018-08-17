@@ -6,20 +6,25 @@ module Resque::Plugins
     end
 
     def rotated_queues
-      # only refresh queues when a slice expires
-      @rtrr_queues ||= queues
-      if @rtrr_queues.empty?
-        @rtrr_queues = nil
-        return []
-      end
+      @rtrr_queues = fetch_queues
+      return [] if @rtrr_queues.empty?
 
       @n ||= 0
-      if slice_expired?
-        @rtrr_queues = queues
-        advance_offset
-      end
+      advance_offset if slice_expired?
 
       @rtrr_queues.rotate(@n)
+    end
+
+    def fetch_queues
+      return @rtrr_queues unless @rtrr_queues&.empty? || queue_list_expired?
+      # refresh queues at a given interval, default is 60 seconds
+      @queue_list_expiration = Time.now + queue_refresh_interval
+      queues
+    end
+
+    def queue_list_expired?
+      @queue_list_expiration ||= Time.now
+      Time.now > @queue_list_expiration
     end
 
     def advance_offset
@@ -34,10 +39,6 @@ module Resque::Plugins
     def slice_expired?
       @slice_expiration ||= Time.now
       Time.now > @slice_expiration
-    end
-
-    def begin_new_queue(queue)
-
     end
 
     def queue_depth(queuename)
@@ -81,6 +82,10 @@ module Resque::Plugins
       @queue_depths ||= Resque::Plugins::TimedRoundRobin.configuration.queue_depths
     end
 
+    def queue_refresh_interval
+      @queue_refresh_interval ||= Resque::Plugins::TimedRoundRobin.configuration.queue_refresh_interval
+    end
+
     def reserve_with_round_robin
       qs = rotated_queues
       qs.each do |queue|
@@ -89,9 +94,8 @@ module Resque::Plugins
         job = reserve_job_from(queue)
         return job if job
 
-        # Move to the next queue if current one is empty and refresh the queue list
+        # Move to the next queue if current one is empty
         @n += 1
-        @rtrr_queues = queues
       end
 
       nil
