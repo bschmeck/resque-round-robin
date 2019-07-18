@@ -26,11 +26,9 @@ jobs:
             RUN_COVERAGE_REPORT: true
           command: bundle exec rspec spec --format progress --format RspecJunitFormatter -o test_results/rspec.xml
       - run:
-          name: Ensure version.rb is changed if building a PR
-          command: |
-            if [[ -v CIRCLE_PULL_REQUESTS ]]; then
-              git diff origin/master --name-status | grep "^M" | grep "version.rb"
-            fi
+          name: Build gem
+          command: gem build *.gemspec
+
 
   upload-artifactory:
     docker:
