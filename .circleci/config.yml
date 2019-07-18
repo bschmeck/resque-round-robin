@@ -1,0 +1,63 @@
+version: 2
+
+jobs:
+  test:
+    docker:
+      - image: quay.io/kennasecurity/ruby:2.5.5-ci
+        user: root
+      - image: redis:3.2.11
+    steps:
+      - checkout
+      - run:
+          name: Install Ruby gems
+          command: bundle install --path /opt/app/bundle
+      - run:
+          name: Install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && tar -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.6.0
+      - run:
+          name: Wait for services
+          command: ./dockerize -wait tcp://127.0.0.1:6379 -timeout 1m
+      - run:
+          name: Run tests
+          environment:
+            ALL_SPECS: true
+            RUN_COVERAGE_REPORT: true
+          command: bundle exec rspec spec --format progress --format RspecJunitFormatter -o test_results/rspec.xml
+      - run:
+          name: Ensure version.rb is changed if building a PR
+          command: |
+            if [[ -v CIRCLE_PULL_REQUESTS ]]; then
+              git diff origin/master --name-status | grep "^M" | grep "version.rb"
+            fi
+
+  upload-artifactory:
+    docker:
+      - image: ruby:2.5.1
+    steps:
+      - checkout
+      - run:
+          name: Build gem
+          command: gem build *.gemspec
+      - run:
+          name: Install jFrog CLI
+          command: curl -fL https://getcli.jfrog.io | sh
+      - deploy:
+          name: Push to Artifactory
+          command: |
+            ./jfrog rt config --url $ARTIFACTORY_URL --user $ARTIFACTORY_USER --apikey $ARTIFACTORY_APIKEY --interactive=false 
+            ./jfrog rt upload *.gem gems/gems/
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - test
+      - upload-artifactory:
+          context: artifactory
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
