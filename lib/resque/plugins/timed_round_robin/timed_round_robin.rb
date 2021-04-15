@@ -5,7 +5,7 @@ module Resque::Plugins
     class ExcludedQueuesCache
       include TimedRoundRobin
 
-      REFRESH_INTERVAL = 60 * 3 * 1000
+      REFRESH_INTERVAL = 60 * 3
       PAUSED_QUEUES_KEY = 'paused_queues'.freeze
 
       def initialize
