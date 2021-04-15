@@ -7,6 +7,7 @@ describe "TimedRoundRobin" do
   end
 
   context "a worker" do
+
     it "switches queues when a slice expires" do
       5.times { Resque::Job.create(:q1, SomeJob) }
       5.times { Resque::Job.create(:q2, SomeJob) }

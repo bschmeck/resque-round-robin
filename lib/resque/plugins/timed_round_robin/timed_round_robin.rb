@@ -1,5 +1,42 @@
+require 'json'
+
 module Resque::Plugins
   module TimedRoundRobin
+    class ExcludedQueuesCache
+      include TimedRoundRobin
+
+      REFRESH_INTERVAL = 60 * 3 * 1000
+      PAUSED_QUEUES_KEY = 'paused_queues'.freeze
+
+      def initialize
+        refresh
+      end
+
+      def get
+        refresh if @last_refresh + REFRESH_INTERVAL < Time.now.to_i
+        @exclude_list
+      end
+
+      private
+
+      def refresh
+        @exclude_list = parse_response(Resque.redis.get(PAUSED_QUEUES_KEY))
+        @last_refresh = Time.now.to_i
+      end
+
+      def parse_response(resp)
+        begin
+          JSON.parse(resp)
+        rescue StandardError => e
+          puts e.backtrace
+          []
+        end
+      end
+
+    end
+
+    CACHE = ExcludedQueuesCache.new
+
     def filter_busy_queues(qs)
       busy_queues = Resque::Worker.working.map { |worker| worker.job["queue"] }.compact
       Array(qs.dup).compact - busy_queues
@@ -7,11 +44,13 @@ module Resque::Plugins
 
     def rotated_queues
       @rtrr_queues = fetch_queues
+
       return [] if @rtrr_queues.empty?
 
       @n ||= 0
       advance_offset if slice_expired?
 
+      @rtrr_queues.rotate(@n)
       @rtrr_queues.rotate(@n)
     end
 
@@ -52,11 +91,11 @@ module Resque::Plugins
     end
 
     def should_work_on_queue?(queuename)
-      return true if @queues.include? '*'  # workers with QUEUES=* are special and are not subject to queue depth setting
+      if @queues.include? '*'
+        return true
+      end  # workers with QUEUES=* are special and are not subject to queue depth setting
       max = queue_depth_for(queuename)
-      unless ENV["RESQUE_QUEUE_DEPTH"].nil? || ENV["RESQUE_QUEUE_DEPTH"] == ""
-        max = ENV["RESQUE_QUEUE_DEPTH"].to_i
-      end
+      max = ENV["RESQUE_QUEUE_DEPTH"].to_i unless ENV["RESQUE_QUEUE_DEPTH"].nil? || ENV["RESQUE_QUEUE_DEPTH"] == ""
       return true if max == 0 # 0 means no limiting
       cur_depth = queue_depth(queuename)
       log! "queue #{queuename} depth = #{cur_depth} max = #{max}"
@@ -87,7 +126,7 @@ module Resque::Plugins
     end
 
     def reserve_with_round_robin
-      qs = rotated_queues
+      qs = rotated_queues - CACHE.get
       qs.each do |queue|
         log! "Checking #{queue}"
         next unless should_work_on_queue? queue

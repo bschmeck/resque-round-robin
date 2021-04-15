@@ -1,7 +1,9 @@
 module Resque
   class Worker
+
     # Returns an array of all worker objects currently processing jobs.
     def self.working
+      puts "**** working"
       names = all
       return [] unless names.any?
 
@@ -17,6 +19,7 @@ module Resque
 
   class DataStore
     def working_keys(worker_ids)
+      puts "**** working_keys"
       redis_keys = worker_ids.map { |id| "worker:#{id}" }
 
       # pipeline our exists checks since there is no MEXISTS commmand.
@@ -25,7 +28,13 @@ module Resque
 
       # this returns a [true, false, true] type array.
       # filter our original list for values where true was returned.
-      redis_keys.zip(key_exists).map { |key, exists| key if exists }.compact
+      result = redis_keys.zip(key_exists).map { |key, exists| key if exists }.compact
+      puts "**** working_keys result = #{result.inspect}"
+      result
+    end
+
+    def get_excluded_queues
+      @redis.get('test_key')
     end
   end
 end
